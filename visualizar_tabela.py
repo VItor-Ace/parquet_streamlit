@@ -5,10 +5,13 @@ from datetime import datetime
 import boto3
 from io import BytesIO
 
-# Initialize S3 client (uses credentials from ~/.aws/credentials)
-s3 = boto3.client('s3', region_name='sa-east-1')
-BUCKET_NAME = 'controle-de-processos'
-PARQUET_KEY = 'Controle_de_Processos.parquet'
+
+s3 = boto3.client(
+    's3',
+    aws_access_key_id=st.secrets["AWS_ACCESS_KEY_ID"],
+    aws_secret_access_key=st.secrets["AWS_SECRET_ACCESS_KEY"],
+    region_name=AWS_REGION
+)
 
 # Title
 st.title("Parquet Client Data Editor")
