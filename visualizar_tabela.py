@@ -41,7 +41,7 @@ mode = st.sidebar.radio("Choose load mode:", ("Use S3 file", "Upload local file"
 try:
     if mode == "Use S3 file":
         df = read_from_s3(st.secrets["BUCKET_NAME"], st.secrets["PARQUET_KEY"])
-        st.sidebar.success(f"Loaded from S3: s3://{st.secrets["BUCKET_NAME"]}/{st.secrets["PARQUET_KEY"]}")
+        st.sidebar.success(f'Loaded from S3: s3://{st.secrets["BUCKET_NAME"]}/{st.secrets["PARQUET_KEY"]}')
     else:
         uploaded = st.sidebar.file_uploader("Upload a Parquet file", type=["parquet"])
         if uploaded is not None:
@@ -108,8 +108,8 @@ if save_option == "S3":
 
             # Save edited version
             write_to_s3(edited_df, st.secrets["BUCKET_NAME"], st.secrets["PARQUET_KEY"])
-            st.success(f"Saved to S3: s3://st.secrets["BUCKET_NAME"]}/{st.secrets["PARQUET_KEY"]}")
-            st.info(f"Backup created at s3://st.secrets["BUCKET_NAME"]}/{st.secrets["PARQUET_KEY"]}")
+            st.success(f'Saved to S3: s3://st.secrets["BUCKET_NAME"]}/{st.secrets["PARQUET_KEY"]}')
+            st.info(f'Backup created at s3://st.secrets["BUCKET_NAME"]}/{st.secrets["PARQUET_KEY"]}')
         except Exception as e:
             st.error(f"Error saving to S3: {str(e)}")
 else:
