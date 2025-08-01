@@ -1,5 +1,3 @@
-cmake==3.27.7  # Ensures CMake is available
 streamlit==1.33.0
-pandas>=2.0.2,<2.1.0  # Pre-built wheels available for Python 3.11
-pyarrow>=12.0.0,<13.0.0 --only-binary=pyarrow  # Forces pre-built wheel
+pandas>=2.0.2,<2.1.0
 boto3==1.34.0
