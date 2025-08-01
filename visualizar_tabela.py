@@ -16,6 +16,9 @@ s3 = boto3.client(
 # Title
 st.title("Parquet Client Data Editor")
 
+bucket = st.secrets["BUCKET_NAME"]
+key = st.secrets["PARQUET_KEY"]
+
 
 @st.cache_data
 def read_from_s3(bucket, key):
@@ -40,8 +43,8 @@ mode = st.sidebar.radio("Choose load mode:", ("Use S3 file", "Upload local file"
 # Load data based on selection
 try:
     if mode == "Use S3 file":
-        df = read_from_s3(st.secrets["BUCKET_NAME"], st.secrets["PARQUET_KEY"])
-        st.sidebar.success(f'Loaded from S3: s3://{st.secrets["BUCKET_NAME"]}/{st.secrets["PARQUET_KEY"]}')
+        df = read_from_s3(bucket, key)
+        st.sidebar.success(f'Loaded from S3: s3://{bucket}/{key}')
     else:
         uploaded = st.sidebar.file_uploader("Upload a Parquet file", type=["parquet"])
         if uploaded is not None:
@@ -102,14 +105,14 @@ if save_option == "S3":
             backup_key = f"backups/Controle_de_Processos_{datetime.now().strftime('%Y%m%d')}.parquet"
             s3.copy_object(
                 Bucket=BUCKET_NAME,
-                CopySource={'Bucket': st.secrets["BUCKET_NAME"], 'Key': st.secrets["PARQUET_KEY"]},
+                CopySource={'Bucket': bucket, 'Key': key},
                 Key=backup_key
             )
 
             # Save edited version
-            write_to_s3(edited_df, st.secrets["BUCKET_NAME"], st.secrets["PARQUET_KEY"])
-            st.success(f'Saved to S3: s3://st.secrets["BUCKET_NAME"]}/{st.secrets["PARQUET_KEY"]}')
-            st.info(f'Backup created at s3://st.secrets["BUCKET_NAME"]}/{st.secrets["PARQUET_KEY"]}')
+            write_to_s3(edited_df, bucket, key)
+            st.success(f'Saved to S3: s3://{bucket}/{key}')
+            st.info(f'Backup created at s3://{bucket}/{key}')
         except Exception as e:
             st.error(f"Error saving to S3: {str(e)}")
 else:
