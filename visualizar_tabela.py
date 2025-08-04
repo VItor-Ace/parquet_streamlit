@@ -171,6 +171,22 @@ except Exception as e:
     st.stop()
 
 df.columns = ["." if str(col).startswith('Unnamed') else col for col in df.columns]
+
+# 2. Agora renomeia as colunas "." duplicadas com asteriscos PROGRESSIVOS
+novos_nomes = []
+contador_pontos = 0
+
+for nome in DataFrame_corrigido.columns:
+    if nome == '.':
+        if contador_pontos == 0:
+            novos_nomes.append('.')  # Mantém o primeiro ponto
+        else:
+            novos_nomes.append('*' * contador_pontos)  # Depois usa *, **, ***
+        contador_pontos += 1
+    else:
+        novos_nomes.append(nome)  # Mantém outros nomes intactos
+
+DataFrame_corrigido.columns = novos_nomes
 data_file_values = df.values.tolist()
 
 for i, lista in enumerate(data_file_values):
@@ -284,4 +300,5 @@ st.markdown("""
 - Upload alternative files when needed
 - All S3 operations use credentials from `~/.aws/credentials`
 """)
+
 
