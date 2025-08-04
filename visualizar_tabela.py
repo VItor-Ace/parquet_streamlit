@@ -23,15 +23,30 @@ key = st.secrets["PARQUET_KEY"]
 
 # ---------------------------------------- CREATING AUTHENTICATION PROCESS ------------------------------------------- #
 
-with open('credentials.yaml', 'r', encoding='utf-8') as credentials:
-    config = yaml.load(credentials, Loader=SafeLoader)
+config = {
+    'credentials': {
+        'usernames': {
+            username: {
+                'email': st.secrets["credentials"]["usernames"][username]["email"],
+                'name': st.secrets["credentials"]["usernames"][username]["name"],
+                'password': st.secrets["credentials"]["passwords"][username]
+            } for username in st.secrets["credentials"]["usernames"]
+        }
+    },
+    'cookie': {
+        'name': st.secrets["cookie"]["name"],
+        'key': st.secrets["cookie"]["key"],
+        'expiry_days': st.secrets["cookie"]["expiry_days"],
+    },
+    'api': st.secrets["api"]["key"]
+}
 
 authenticator = stauth.Authenticate(
     config['credentials'],
     config['cookie']['name'],
     config['cookie']['key'],
     config['cookie']['expiry_days'],
-    config['api_key']
+    config['api']  # Usa get() para evitar KeyError se não existir
 )
 
 tabs = st.tabs(["Login", "Registrar", "Esqueci a senha", "Esqueci o usuário"])
@@ -269,3 +284,4 @@ st.markdown("""
 - Upload alternative files when needed
 - All S3 operations use credentials from `~/.aws/credentials`
 """)
+
