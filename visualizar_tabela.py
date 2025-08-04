@@ -146,8 +146,13 @@ def generating_random_code(length=3):
     return code
 
 # ---------------------------------- WRITING THE WEB APP INTERFACE AND COMMANDS -------------------------------------- #
-# Title
-st.title("Parquet Client Data Editor")
+
+col1, col2 = st.columns([1, 4])
+
+with col1:
+    st.image('LogoRC.png', width=80)
+with col2:
+    st.title("Editor de Tabela Parquet")
 
 # Sidebar: file selection or upload
 st.sidebar.header("Load Data")
@@ -176,7 +181,7 @@ df.columns = ["." if str(col).startswith('Unnamed') else col for col in df.colum
 novos_nomes = []
 contador_pontos = 0
 
-for nome in DataFrame_corrigido.columns:
+for nome in df.columns:
     if nome == '.':
         if contador_pontos == 0:
             novos_nomes.append('.')  # Mantém o primeiro ponto
@@ -186,7 +191,7 @@ for nome in DataFrame_corrigido.columns:
     else:
         novos_nomes.append(nome)  # Mantém outros nomes intactos
 
-DataFrame_corrigido.columns = novos_nomes
+df.columns = novos_nomes
 data_file_values = df.values.tolist()
 
 for i, lista in enumerate(data_file_values):
@@ -300,5 +305,6 @@ st.markdown("""
 - Upload alternative files when needed
 - All S3 operations use credentials from `~/.aws/credentials`
 """)
+
 
 
