@@ -49,6 +49,8 @@ authenticator = stauth.Authenticate(
     config['api']  # Usa get() para evitar KeyError se não existir
 )
 
+st.title("Editor e Visualizador de Tabela")
+
 tabs = st.tabs(["Login", "Registrar", "Esqueci a senha", "Esqueci o usuário"])
 
 with tabs[0]:
@@ -310,3 +312,4 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
