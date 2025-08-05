@@ -38,7 +38,9 @@ config = {
         'key': st.secrets["cookie"]["key"],
         'expiry_days': st.secrets["cookie"]["expiry_days"],
     },
-    'api': st.secrets["api"]["key"]
+    'preauthorized': {
+        'emails': st.secrets["preauthorized"]["emails"]
+    }
 }
 
 authenticator = stauth.Authenticate(
@@ -46,69 +48,76 @@ authenticator = stauth.Authenticate(
     config['cookie']['name'],
     config['cookie']['key'],
     config['cookie']['expiry_days'],
-    config['api']  # Usa get() para evitar KeyError se não existir
+    config['preauthorized']["emails"]
 )
 
 st.title("Editor e Visualizador de Tabela")
 
-tabs = st.tabs(["Login", "Registrar", "Esqueci a senha", "Esqueci o usuário"])
+auth_container = st.container()
 
-with tabs[0]:
-    try:
-        authenticator.login(
-            "main",
-            1,
-            4,
-            {'Form name':'Login', 'Username':'Username', 'Password':'Password', 'Login':'Login', 'Captcha':'Captcha'},
-            True
-        )
+with auth_container:
+    if not st.session_state.get('authentication_status'):
+        tabs = st.tabs(["Login", "Registrar", "Esqueci a senha", "Esqueci o usuário"])
 
-    except Exception as e:
-        st.error(e)
+        with tabs[0]:
+            try:
+                authenticator.login(
+                    "main",
+                    1,
+                    4,
+                    {'Form name':'Login', 'Username':'Nome de usuário', 'Password':'Senha', 'Login':'Login', 'Captcha':'Captcha'},
+                    True
+                )
 
-with tabs[1]:
-    st.subheader("Novo registro de usuário.")
+            except Exception as e:
+                st.error(e)
 
-    try:
-        email_of_registered_user, \
-        username_of_registered_user, \
-        name_of_registered_user = authenticator.register_user(two_factor_auth=True)
-        if email_of_registered_user:
-            st.success('Usuário registrado com sucesso!')
-            with open('credentials.yaml', 'w', encoding='utf-8') as file:
-                yaml.dump(authenticator.credentials, file, default_flow_style=False, allow_unicode=True)
+        with tabs[1]:
+            st.subheader("Novo registro de usuário.")
 
-    except Exception as e:
-        st.error(f"Erro ao registrar: {e}")
+            try:
+                email_of_registered_user, \
+                username_of_registered_user, \
+                name_of_registered_user = authenticator.register_user(fields={'Form name':'Registro', 'Email':'Email', 'Username':'Nome de usuário', 'Password':'Senha', 'Repeat password':'Repita a senha', 'Password hint':'Dica para a senha', 'Captcha':'Captcha', 'Register':'Registrar'})
+                if email_of_registered_user:
+                    st.success('Usuário registrado com sucesso!')
+                    with open('credentials.yaml', 'w', encoding='utf-8') as file:
+                        yaml.dump(authenticator.credentials, file, default_flow_style=False, allow_unicode=True)
 
-with tabs[2]:
-    st.subheader("Recuperar senha")
-    try:
-        username_of_forgotten_password, \
-        email_of_forgotten_password, \
-        new_random_password = authenticator.forgot_password(two_factor_auth=True)
-        if username_of_forgotten_password:
-            st.success('Nova senha enviada com segurança!')
-            # To securely transfer the new password to the user please see step 8.
-            # Salvar as alterações no arquivo
-            with open('credentials.yaml', 'w', encoding='utf-8') as file:
-                yaml.dump(authenticator.credentials, file, default_flow_style=False, allow_unicode=True)
-        else:
-            st.error('Usúario não encontrado.')
+            except Exception as e:
+                st.error(f"Erro ao registrar: {e}")
 
-    except Exception as e:
-        st.error(e)
+        with tabs[2]:
+            st.subheader("Recuperar senha")
+            try:
+                username_of_forgotten_password, \
+                email_of_forgotten_password, \
+                new_random_password = authenticator.forgot_password(fields={'Form name':'Esqueci minha senha', 'Username':'Nome de usuário', 'Captcha':'Captcha', 'Submit':'Feito!'})
+                if username_of_forgotten_password:
+                    st.success('Nova senha enviada com segurança!')
+                    # To securely transfer the new password to the user please see step 8.
+                    # Salvar as alterações no arquivo
+                    with open('credentials.yaml', 'w', encoding='utf-8') as file:
+                        yaml.dump(authenticator.credentials, file, default_flow_style=False, allow_unicode=True)
+                else:
+                    st.error('Usúario não encontrado.')
 
-with tabs[3]:
-    st.subheader("Recuperar nome de usuário")
-    try:
-        username_recovered = authenticator.forgot_username(two_factor_auth=True)
-        if username_recovered:
-            st.success(f"Nome de usuário enviado para o email associado!")
-    except Exception as e:
-        st.error(e)
+            except Exception as e:
+                st.error(e)
+
+        with tabs[3]:
+            st.subheader("Recuperar nome de usuário")
+            try:
+                username_recovered = authenticator.forgot_username(fields={'Form name':'Esqueci meu usuário', 'Email':'Email', 'Captcha':'Captcha', 'Submit':'Feito!'})
+                if username_recovered:
+                    st.success(f"Nome de usuário enviado para o email associado!")
+            except Exception as e:
+                st.error(e)
 
 if st.session_state.get('authentication_status'):
+    # Limpa as abas de autenticação
+    auth_container.empty()
+
     if st.button("Redefinir minha senha"):
         try:
             if authenticator.reset_password(st.session_state.get('username'), 'sidebar'):
@@ -117,6 +126,12 @@ if st.session_state.get('authentication_status'):
                     yaml.dump(authenticator.credentials, file, allow_unicode=True)
         except Exception as e:
             st.error(e)
+
+    try:
+        if authenticator.update_user_details(st.session_state.get('username'), location='sidebar'):
+            st.success('Atualizado com sucesso!')
+    except Exception as e:
+        st.error(e)
 
     authenticator.logout('Sair', 'sidebar')
 
@@ -146,11 +161,9 @@ if st.session_state.get('authentication_status'):
     col1, col2 = st.columns([1, 4])
 
     with col1:
-        st.image('LogoRC.png', width=80)
+        st.image('LogoRC.png', width=130)
     with col2:
         st.title(f"Bem vindo {st.session_state.get('name')}!")
-
-    st.write("Editor e Visualizador de Tabela")
 
     # Sidebar: file selection or upload
     st.sidebar.header("Carregue dados")
@@ -158,7 +171,7 @@ if st.session_state.get('authentication_status'):
 
     # Load data based on selection
     try:
-        if mode == "Use S3 file":
+        if mode == "Use arquivo S3":
             df = read_from_s3(bucket, key)
             st.sidebar.success(f'Carregado de S3: s3://{bucket}/{key}')
         else:
@@ -307,7 +320,7 @@ if st.session_state.get('authentication_status'):
     - Upload alternative files when needed
     - All S3 operations use credentials from `~/.aws/credentials`
     """)
-    
+
 elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
