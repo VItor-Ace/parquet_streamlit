@@ -155,51 +155,79 @@ with auth_container:
 
 with st.sidebar:
     if st.session_state.get('authentication_status'):
-        # Password reset button
+
+        # --- Reset Password ---
         if st.button("Redefinir minha senha", key="unique_reset_pwd_btn"):
             try:
                 username = st.session_state['username']
-                if authenticator.reset_password(username, location='sidebar',
-                                                fields={
-                                                    'Form name': 'Redefinir sua Senha',
-                                                    'Current password': 'Senha atual',
-                                                    'New password': 'Nova senha',
-                                                    'Repeat password': 'Repita a senha',
-                                                    'Reset': 'Redefinir'
-                                                }):
+                result = authenticator.reset_password(
+                    username,
+                    location='sidebar',
+                    fields={
+                        'Form name': 'Redefinir sua Senha',
+                        'Current password': 'Senha atual',
+                        'New password': 'Nova senha',
+                        'Repeat password': 'Repita a senha',
+                        'Reset': 'Redefinir'
+                    }
+                )
 
+                if result:
+                    # Check password strength
                     new_password = authenticator.credentials['usernames'][username]['password']
                     if len(new_password) < 8:
-                        raise ValueError("Senha deve ter 8+ caracteres")
-
-                    update_credentials_file()
-                    if st.secrets.get('streamlit_cloud', False):
-                        st.warning("**Para Community Cloud:** Atualize manualmente em Settings → Secrets")
+                        st.error("Falha: nova senha deve ter ao menos 8 caracteres.")
                     else:
-                        st.success("Senha alterada com sucesso!")
+                        if st.secrets.get('streamlit_cloud', False):
+                            st.warning(
+                                "Para Streamlit Cloud: contate o administrador\n"
+                                "para atualizar a senha em Settings → Secrets"
+                            )
+                        else:
+                            update_credentials_file()
+                            st.success("Senha alterada com sucesso!")
+                else:
+                    st.error(
+                        "Não foi possível redefinir a senha.\n"
+                        "Verifique a senha atual e tente novamente."
+                    )
 
             except Exception as e:
-                st.error(f"Falha: {str(e)}")
+                st.error(f"Falha inesperada ao redefinir senha: {e}")
 
-        # User details button
+        # --- Update User Details ---
         if st.button("Atualizar meus dados", key="unique_update_details_btn"):
             try:
-                if authenticator.update_user_details(st.session_state['username'],
-                                                     location='sidebar',
-                                                     fields={
-                                                         'Form name': 'Atualizar detalhes',
-                                                         'Field': 'Campo',
-                                                         'First name': 'Nome',
-                                                         'Last name': 'Sobrenome',
-                                                         'Email': 'Email',
-                                                         'New value': 'Novo valor',
-                                                         'Update': 'Atualizar'
-                                                     }):
-                    update_credentials_file()
-                    st.success('Dados atualizados!')
-            except Exception as e:
-                st.error(f"Erro: {str(e)}")
+                result = authenticator.update_user_details(
+                    st.session_state['username'],
+                    location='sidebar',
+                    fields={
+                        'Form name': 'Atualizar detalhes',
+                        'Field': 'Campo',
+                        'First name': 'Nome',
+                        'Last name': 'Sobrenome',
+                        'Email': 'Email',
+                        'New value': 'Novo valor',
+                        'Update': 'Atualizar'
+                    }
+                )
 
+                if result:
+                    if st.secrets.get('streamlit_cloud', False):
+                        st.warning(
+                            "Para Streamlit Cloud: contate o administrador\n"
+                            "para atualizar os detalhes em Settings → Secrets"
+                        )
+                    else:
+                        update_credentials_file()
+                        st.success("Dados atualizados com sucesso!")
+                else:
+                    st.error("Não foi possível atualizar os dados. Reveja as informações e tente novamente.")
+
+            except Exception as e:
+                st.error(f"Erro inesperado ao atualizar dados: {e}")
+
+        # --- Logout ---
         authenticator.logout('Sair', 'sidebar')
 
 if st.session_state.get('authentication_status'):
@@ -366,6 +394,7 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
 
 
 
