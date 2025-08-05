@@ -157,7 +157,7 @@ with st.sidebar:
     if st.session_state.get('authentication_status'):
 
         # --- Reset Password ---
-        if st.button("Redefinir minha senha", key="unique_reset_pwd_btn"):
+        if st.sidebar.button("Redefinir minha senha", key="unique_reset_pwd_btn"):
             try:
                 username = st.session_state['username']
                 result = authenticator.reset_password(
@@ -196,7 +196,7 @@ with st.sidebar:
                 st.error(f"Falha inesperada ao redefinir senha: {e}")
 
         # --- Update User Details ---
-        if st.button("Atualizar meus dados", key="unique_update_details_btn"):
+        if st.sidebar.button("Atualizar meus dados", key="unique_update_details_btn"):
             try:
                 result = authenticator.update_user_details(
                     st.session_state['username'],
@@ -394,6 +394,7 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
 
 
 
