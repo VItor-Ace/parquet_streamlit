@@ -173,27 +173,28 @@ with st.sidebar:
                 )
 
                 if result:
-                    # Check password strength
-                    new_password = authenticator.credentials['usernames'][username]['password']
-                    if len(new_password) < 8:
-                        st.error("Falha: nova senha deve ter ao menos 8 caracteres.")
+                    new_pwd = authenticator.credentials['usernames'][username]['password']
+                    if len(new_pwd) < 8:
+                        st.sidebar.error("Falha: nova senha deve ter ao menos 8 caracteres.")
                     else:
                         if st.secrets.get('streamlit_cloud', False):
-                            st.warning(
+                            st.sidebar.warning(
                                 "Para Streamlit Cloud: contate o administrador\n"
                                 "para atualizar a senha em Settings → Secrets"
                             )
                         else:
                             update_credentials_file()
-                            st.success("Senha alterada com sucesso!")
-                else:
-                    st.error(
+                            st.sidebar.success("Senha alterada com sucesso!")
+                elif not result:
+                    st.sidebar.error(
                         "Não foi possível redefinir a senha.\n"
                         "Verifique a senha atual e tente novamente."
                     )
+                else:  # None (usuário cancelou)
+                    st.sidebar.info("Redefinição de senha cancelada.")
 
             except Exception as e:
-                st.error(f"Falha inesperada ao redefinir senha: {e}")
+                st.sidebar.error(f"Falha inesperada ao redefinir senha: {e}")
 
         # --- Update User Details ---
         if st.sidebar.button("Atualizar meus dados", key="unique_update_details_btn"):
@@ -214,18 +215,18 @@ with st.sidebar:
 
                 if result:
                     if st.secrets.get('streamlit_cloud', False):
-                        st.warning(
+                        st.sidebar.warning(
                             "Para Streamlit Cloud: contate o administrador\n"
                             "para atualizar os detalhes em Settings → Secrets"
                         )
                     else:
                         update_credentials_file()
-                        st.success("Dados atualizados com sucesso!")
+                        st.sidebar.success("Dados atualizados com sucesso!")
                 else:
-                    st.error("Não foi possível atualizar os dados. Reveja as informações e tente novamente.")
+                    st.sidebar.error("Não foi possível atualizar os dados. Reveja as informações e tente novamente.")
 
             except Exception as e:
-                st.error(f"Erro inesperado ao atualizar dados: {e}")
+                st.sidebar.error(f"Erro inesperado ao atualizar dados: {e}")
 
         # --- Logout ---
         authenticator.logout('Sair', 'sidebar')
@@ -394,6 +395,7 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
 
 
 
