@@ -201,13 +201,7 @@ if st.session_state.get('authentication_status'):
 
     for nome in df.columns:
         if nome == '.':
-            if contador_pontos == 0:
-                novos_nomes.append('.')  # Mantém o primeiro ponto
-            elif contador_pontos >= 17:
-                contador_pontos = 2
-                novos_nomes.append('.' * (contador_pontos - 15))
-            else:
-                novos_nomes.append('*' * contador_pontos)  # Depois usa *, **, ***
+            novos_nomes.append(f'{contador_pontos}')
             contador_pontos += 1
         else:
             novos_nomes.append(nome)  # Mantém outros nomes intactos
@@ -335,6 +329,7 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
 
 
 
