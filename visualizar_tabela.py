@@ -151,69 +151,64 @@ with auth_container:
 
 with st.sidebar:
     if st.session_state.get('authentication_status'):
-        # Password reset button
-
-        if st.button("Redefinir minha senha", key="reset_pwd_btn"):
-            try:
-                if authenticator.reset_password(st.session_state['username'], location='sidebar'):
-                    with open('credentials.yaml', 'w', encoding='utf-8') as file:
-                        yaml.dump(authenticator.credentials, file, allow_unicode=True)
-                    st.success('Senha modificada com sucesso!')
-            except Exception as e:
-                st.error(f"Erro ao redefinir senha: {e}")
-
-        # User details update button
-        if st.button("Atualizar meus dados de usuário"):
-            try:
-                if authenticator.update_user_details(st.session_state['username'], location='sidebar'):
-                    with open('credentials.yaml', 'w', encoding='utf-8') as file:
-                        yaml.dump(authenticator.credentials, file, default_flow_style=False, allow_unicode=True)
-                    st.success('Dados atualizados com sucesso!')
-            except Exception as e:
-                st.error(f"Erro ao atualizar dados: {e}")
-
-with st.sidebar:
-    if st.session_state.get('authentication_status'):
-        # Password reset button
-        if st.button("Redefinir minha senha"):
+        # Password reset button - SINGLE DEFINITION
+        if st.button("Redefinir minha senha", key="unique_reset_pwd_btn"):
             try:
                 username = st.session_state['username']
+                if authenticator.reset_password(username, location='sidebar',
+                                                fields={
+                                                    'Form name': 'Redefinir sua Senha',
+                                                    'Current password': 'Senha atual',
+                                                    'New password': 'Nova senha',
+                                                    'Repeat password': 'Repita a senha',
+                                                    'Reset': 'Redefinir'
+                                                }):
 
-                if authenticator.reset_password(st.session_state['username'], location='sidebar', fields={'Form name':'Redefinir sua Senha', 'Current password':'Senha atual', 'New password':'Nova senha', 'Repeat password': 'Repita a senha', 'Reset':'Redefinir'}):
+                    # Validate password strength
                     new_password = authenticator.credentials['usernames'][username]['password']
                     if len(new_password) < 8:
                         raise ValueError("Senha deve ter 8+ caracteres")
 
+                    # Save credentials
                     update_credentials_file()
 
                     if is_running_on_cloud():
                         st.warning("""
-                            Senha alterada com sucesso! \n
-                            **Para usuários do Streamlit Community Cloud:** \n
-                            Notifique o administrador para atualizar os secrets no painel.
-                            """)
+                        **Para Streamlit Community Cloud:**
+                        Atualize manualmente em Settings → Secrets
+                        """)
                     else:
                         st.success("Senha alterada com sucesso!")
 
             except Exception as e:
-                st.error(f"Falha na atualização: {str(e)}")
+                st.error(f"Falha: {str(e)}")
                 authenticator.credentials = yaml.safe_load(open('credentials.yaml'))
 
-        # User details update button
-        if st.button("Atualizar meus dados de usuário"):
+        # User details button - SINGLE DEFINITION
+        if st.button("Atualizar meus dados", key="unique_update_details_btn"):
             try:
-                if authenticator.update_user_details(st.session_state['username'], location='sidebar', fields={'Form name':'Atualizar detalhes de Usuário', 'Field':'Campo', 'First name':'Nome', 'Last name':'Sobrenome', 'Email':'Email', 'New value':'Novo valor', 'Update':'Atualizar'}):
+                if authenticator.update_user_details(st.session_state['username'],
+                                                     location='sidebar',
+                                                     fields={
+                                                         'Form name': 'Atualizar detalhes',
+                                                         'Field': 'Campo',
+                                                         'First name': 'Nome',
+                                                         'Last name': 'Sobrenome',
+                                                         'Email': 'Email',
+                                                         'New value': 'Novo valor',
+                                                         'Update': 'Atualizar'
+                                                     }):
                     update_credentials_file()
-                    st.success('Dados atualizados com sucesso!')
+                    st.success('Dados atualizados!')
             except Exception as e:
-                st.error(f"Erro ao atualizar dados: {e}")
+                st.error(f"Erro: {str(e)}")
                 authenticator.credentials = yaml.safe_load(open('credentials.yaml'))
+
+        authenticator.logout('Sair', 'sidebar')
 
 if st.session_state.get('authentication_status'):
     # Limpa as abas de autenticação
     auth_container.empty()
-
-    authenticator.logout('Sair', 'sidebar')
 
     # ---------------------------------- WRITING THE WEB APP INTERFACE AND COMMANDS -------------------------------------- #
 
@@ -401,6 +396,7 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
 
 
 
