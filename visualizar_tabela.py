@@ -330,10 +330,6 @@ if st.session_state.get('authentication_status'):
             except Exception as e:
                 st.error(f"Erro salvando localmente: {str(e)}")
 
-    # Optional preview
-    if st.checkbox("Mostrar Sumário de Dados"):
-        st.write(edited_df.describe(include='all'))
-
     # Footer
     st.markdown("---")
     st.markdown("""
@@ -347,6 +343,7 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
 
 
 
