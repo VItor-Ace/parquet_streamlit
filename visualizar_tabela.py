@@ -235,7 +235,7 @@ if st.session_state.get('authentication_status'):
     df = DataFrame_corrigido
 
     # Main editor function
-        def main_editor(df_f: pd.DataFrame) -> pd.DataFrame:
+    def main_editor(df_f: pd.DataFrame) -> pd.DataFrame:
         st.subheader("Edite a Tabela")
         try:
             # Try newer data_editor first
@@ -347,6 +347,7 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
 
 
 
