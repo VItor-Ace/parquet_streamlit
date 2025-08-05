@@ -153,7 +153,7 @@ with st.sidebar:
     if st.session_state.get('authentication_status'):
         # Password reset button
 
-        if st.button("Redefinir minha senha"):
+        if st.button("Redefinir minha senha", key="reset_pwd_btn"):
             try:
                 if authenticator.reset_password(st.session_state['username'], location='sidebar'):
                     with open('credentials.yaml', 'w', encoding='utf-8') as file:
@@ -401,6 +401,7 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
 
 
 
