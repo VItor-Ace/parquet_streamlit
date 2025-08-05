@@ -29,7 +29,7 @@ config = {
             username: {
                 'email': st.secrets["credentials"]["usernames"][username]["email"],
                 'name': st.secrets["credentials"]["usernames"][username]["name"],
-                'password': st.secrets["credentials"]["usernames"][username]["password"]
+                'password': st.secrets["credentials"]["passwords"][username]
             } for username in st.secrets["credentials"]["usernames"]
         }
     },
@@ -39,7 +39,7 @@ config = {
         'expiry_days': st.secrets["cookie"]["expiry_days"],
     },
     'preauthorized': {
-        'emails': st.secrets.get("preauthorized", {}).get("emails", [])
+        'emails': st.secrets["preauthorized"]["emails"]
     }
 }
 
@@ -366,6 +366,7 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
 
 
 
