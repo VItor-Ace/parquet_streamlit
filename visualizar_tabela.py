@@ -235,7 +235,7 @@ if st.session_state.get('authentication_status'):
     df = DataFrame_corrigido
 
     # Main editor function
-    def main_editor(df_f: pd.DataFrame) -> pd.DataFrame:
+        def main_editor(df_f: pd.DataFrame) -> pd.DataFrame:
         st.subheader("Edite a Tabela")
         try:
             # Try newer data_editor first
@@ -264,19 +264,33 @@ if st.session_state.get('authentication_status'):
         added_lines = edited_keys - original_keys
 
         if lines_removed:
-            st.warning(f'Houve(ram) {len(lines_removed)} linha(s) removida(s) do arquivo original. Confirme a ação:')
-            if 'random_code' not in st.session_state:
-                st.session_state.random_code = generating_random_code()
+            st.warning(f'Houve(ram) {len(lines_removed)} linha(s) removida(s). Confirme a ação:')
 
-            code = st.text_input(f"Digite o código '{st.session_state.random_code}' para confirmar", key="confirm_code")
-            if st.button("Confirmar Remoção"):
-                if user_code == st.session_state.random_code:
-                    st.success(f"{len(lines_removed)} linha(s) removida(s).")
-                    st.session_state.random_code = None
-                else:
-                    st.error("Código incorreto. Ação cancelada.")
-                    edited_df = df.copy()  # Revert changes
-                    st.session_state.random_code = None  # Clear on failure too
+            # Initialize session state if not exists
+            if 'verification_code' not in st.session_state:
+                st.session_state.verification_code = generating_random_code()
+                st.session_state.verified = False
+
+            # Show verification UI
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                user_input = st.text_input(
+                    f"Digite '{st.session_state.verification_code}' para confirmar",
+                    key="verification_input"
+                )
+            with col2:
+                st.write("")  # Spacer
+                if st.button("Confirmar", key="verify_button"):
+                    if user_input == str(st.session_state.verification_code):
+                        st.session_state.verified = True
+                        st.success("Remoção confirmada!")
+                    else:
+                        st.error("Código incorreto!")
+                        st.session_state.verified = False
+
+            # Only return edited DF if verified
+            if not st.session_state.get('verified', False):
+                return df_f  # Return original if not verified
 
         if added_lines:
             st.warning(f'Houve(ram) {len(lines_removed)} linha(s) adicionada(s) do arquivo original.')
@@ -333,6 +347,7 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
 
 
 
