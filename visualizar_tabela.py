@@ -168,7 +168,7 @@ if st.session_state.get('authentication_status'):
     col1, col2 = st.columns([1, 4])
 
     with col1:
-        st.image('LogoRC.png', width=130)
+        st.image('Logo_Minimal_webapp.png', width=130)
     with col2:
         st.title(f"Bem vindo {st.session_state.get('name')}!")
 
@@ -332,6 +332,7 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
 
 
 
