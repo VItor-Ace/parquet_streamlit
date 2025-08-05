@@ -127,11 +127,14 @@ if st.session_state.get('authentication_status'):
         except Exception as e:
             st.error(e)
 
-    try:
-        if authenticator.update_user_details(st.session_state.get('username'), location='sidebar'):
-            st.success('Atualizado com sucesso!')
-    except Exception as e:
-        st.error(e)
+    if st.button("Atualizar meus dados de usuário"):
+        try:
+            if authenticator.update_user_details(st.session_state.get('username'), location='sidebar'):
+                st.success('Atualizado com sucesso!')
+                with open('credentials.yaml', 'w', encoding='utf-8') as file:
+                    yaml.dump(authenticator.credentials, file, default_flow_style=False, allow_unicode=True)
+        except Exception as e:
+            st.error(e)
 
     authenticator.logout('Sair', 'sidebar')
 
@@ -325,4 +328,5 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
 
