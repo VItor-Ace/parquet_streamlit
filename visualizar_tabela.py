@@ -203,7 +203,7 @@ if st.session_state.get('authentication_status'):
         if nome == '.':
             if contador_pontos == 0:
                 novos_nomes.append('.')  # Mantém o primeiro ponto
-            elif contador_pontos == 17:
+            elif contador_pontos >= 17:
                 contador_pontos = 2
                 novos_nomes.append('.' * contador_pontos)
             else:
@@ -335,6 +335,7 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
 
 
 
