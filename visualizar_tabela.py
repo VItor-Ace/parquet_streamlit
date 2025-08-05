@@ -29,7 +29,7 @@ config = {
             username: {
                 'email': st.secrets["credentials"]["usernames"][username]["email"],
                 'name': st.secrets["credentials"]["usernames"][username]["name"],
-                'password': st.secrets["credentials"]["passwords"][username]
+                'password': st.secrets["credentials"]["usernames"][username]["password"]
             } for username in st.secrets["credentials"]["usernames"]
         }
     },
@@ -39,7 +39,7 @@ config = {
         'expiry_days': st.secrets["cookie"]["expiry_days"],
     },
     'preauthorized': {
-        'emails': st.secrets["preauthorized"]["emails"]
+        'emails': st.secrets.get("preauthorized", {}).get("emails", [])
     }
 }
 
@@ -48,7 +48,7 @@ authenticator = stauth.Authenticate(
     config['cookie']['name'],
     config['cookie']['key'],
     config['cookie']['expiry_days'],
-    config['preauthorized']["emails"]
+    config['preauthorized']['emails']
 )
 
 st.title("Editor e Visualizador de Tabela")
@@ -78,7 +78,9 @@ with auth_container:
             try:
                 email_of_registered_user, \
                 username_of_registered_user, \
-                name_of_registered_user = authenticator.register_user(fields={'Form name':'Registro', 'Email':'Email', 'Username':'Nome de usuário', 'Password':'Senha', 'Repeat password':'Repita a senha', 'Password hint':'Dica para a senha', 'Captcha':'Captcha', 'Register':'Registrar'})
+                name_of_registered_user = authenticator.register_user(
+                    fields={'Form name':'Registro', 'Email':'Email', 'Username':'Nome de usuário', 'Password':'Senha', 'Repeat password':'Repita a senha', 'Password hint':'Dica para a senha', 'Captcha':'Captcha', 'Register':'Registrar'}
+                )
                 if email_of_registered_user:
                     st.success('Usuário registrado com sucesso!')
                     with open('credentials.yaml', 'w', encoding='utf-8') as file:
@@ -92,15 +94,15 @@ with auth_container:
             try:
                 username_of_forgotten_password, \
                 email_of_forgotten_password, \
-                new_random_password = authenticator.forgot_password(fields={'Form name':'Esqueci minha senha', 'Username':'Nome de usuário', 'Captcha':'Captcha', 'Submit':'Feito!'})
+                new_random_password = authenticator.forgot_password(
+                    fields={'Form name':'Esqueci minha senha', 'Username':'Nome de usuário', 'Captcha':'Captcha', 'Submit':'Feito!'}
+                )
                 if username_of_forgotten_password:
                     st.success('Nova senha enviada com segurança!')
-                    # To securely transfer the new password to the user please see step 8.
-                    # Salvar as alterações no arquivo
                     with open('credentials.yaml', 'w', encoding='utf-8') as file:
                         yaml.dump(authenticator.credentials, file, default_flow_style=False, allow_unicode=True)
                 else:
-                    st.error('Usúario não encontrado.')
+                    st.error('Usuário não encontrado.')
 
             except Exception as e:
                 st.error(e)
@@ -108,7 +110,9 @@ with auth_container:
         with tabs[3]:
             st.subheader("Recuperar nome de usuário")
             try:
-                username_recovered = authenticator.forgot_username(fields={'Form name':'Esqueci meu usuário', 'Email':'Email', 'Captcha':'Captcha', 'Submit':'Feito!'})
+                username_recovered = authenticator.forgot_username(
+                    fields={'Form name':'Esqueci meu usuário', 'Email':'Email', 'Captcha':'Captcha', 'Submit':'Feito!'}
+                )
                 if username_recovered:
                     st.success(f"Nome de usuário enviado para o email associado!")
             except Exception as e:
@@ -151,7 +155,7 @@ with auth_container:
 
 with st.sidebar:
     if st.session_state.get('authentication_status'):
-        # Password reset button - SINGLE DEFINITION
+        # Password reset button
         if st.button("Redefinir minha senha", key="unique_reset_pwd_btn"):
             try:
                 username = st.session_state['username']
@@ -164,27 +168,20 @@ with st.sidebar:
                                                     'Reset': 'Redefinir'
                                                 }):
 
-                    # Validate password strength
                     new_password = authenticator.credentials['usernames'][username]['password']
                     if len(new_password) < 8:
                         raise ValueError("Senha deve ter 8+ caracteres")
 
-                    # Save credentials
                     update_credentials_file()
-
-                    if is_running_on_cloud():
-                        st.warning("""
-                        **Para Streamlit Community Cloud:**
-                        Atualize manualmente em Settings → Secrets
-                        """)
+                    if st.secrets.get('streamlit_cloud', False):
+                        st.warning("**Para Community Cloud:** Atualize manualmente em Settings → Secrets")
                     else:
                         st.success("Senha alterada com sucesso!")
 
             except Exception as e:
                 st.error(f"Falha: {str(e)}")
-                authenticator.credentials = yaml.safe_load(open('credentials.yaml'))
 
-        # User details button - SINGLE DEFINITION
+        # User details button
         if st.button("Atualizar meus dados", key="unique_update_details_btn"):
             try:
                 if authenticator.update_user_details(st.session_state['username'],
@@ -202,12 +199,11 @@ with st.sidebar:
                     st.success('Dados atualizados!')
             except Exception as e:
                 st.error(f"Erro: {str(e)}")
-                authenticator.credentials = yaml.safe_load(open('credentials.yaml'))
 
         authenticator.logout('Sair', 'sidebar')
 
 if st.session_state.get('authentication_status'):
-    # Limpa as abas de autenticação
+    # limpa as abas de autenticação
     auth_container.empty()
 
     # ---------------------------------- WRITING THE WEB APP INTERFACE AND COMMANDS -------------------------------------- #
@@ -241,21 +237,15 @@ if st.session_state.get('authentication_status'):
         st.stop()
 
     df.columns = ["." if str(col).startswith('Unnamed') else col for col in df.columns]
-
-    # 2. Agora renomeia as colunas "." duplicadas com asteriscos PROGRESSIVOS
     novos_nomes = []
     contador_pontos = 0
-
     for nome in df.columns:
         if nome == '.':
-            novos_nomes.append(f'{contador_pontos}')
+            novos_nomes.append(str(contador_pontos))
             contador_pontos += 1
         else:
-            novos_nomes.append(nome)  # Mantém outros nomes intactos
-
+            novos_nomes.append(nome)
     df.columns = novos_nomes
-
-    data_file_values = df.values.tolist()
 
     def processar_datas(df):
         data = df.values.tolist()
@@ -279,7 +269,6 @@ if st.session_state.get('authentication_status'):
     def main_editor(df_f: pd.DataFrame) -> pd.DataFrame:
         st.subheader("Edite a Tabela")
         try:
-            # Try newer data_editor first
             edited_df = st.data_editor(
                 df_f,
                 use_container_width=True,
@@ -287,7 +276,6 @@ if st.session_state.get('authentication_status'):
                 key="data_editor"
             )
         except AttributeError:
-            # Fallback to experimental editor
             edited_df = st.experimental_data_editor(
                 df_f,
                 use_container_width=True,
@@ -295,24 +283,18 @@ if st.session_state.get('authentication_status'):
                 key="data_editor"
             )
 
-        def hash_row(row):
-            return hash(tuple(row))
-
-        original_keys = set(hash_row(row) for row in df_f.values)
-        edited_keys = set(hash_row(row) for row in edited_df.values)
+        original_keys = {hash(tuple(row)) for row in df_f.values}
+        edited_keys = {hash(tuple(row)) for row in edited_df.values}
 
         lines_removed = original_keys - edited_keys
         added_lines = edited_keys - original_keys
 
         if lines_removed:
             st.warning(f'Houve(ram) {len(lines_removed)} linha(s) removida(s). Confirme a ação:')
-
-            # Initialize session state if not exists
             if 'verification_code' not in st.session_state:
                 st.session_state.verification_code = generating_random_code()
                 st.session_state.verified = False
 
-            # Show verification UI
             col1, col2 = st.columns([3, 1])
             with col1:
                 user_input = st.text_input(
@@ -320,7 +302,6 @@ if st.session_state.get('authentication_status'):
                     key="verification_input"
                 )
             with col2:
-                st.write("")  # Spacer
                 if st.button("Confirmar", key="verify_button"):
                     if user_input == str(st.session_state.verification_code):
                         st.session_state.verified = True
@@ -329,18 +310,15 @@ if st.session_state.get('authentication_status'):
                         st.error("Código incorreto!")
                         st.session_state.verified = False
 
-            # Only return edited DF if verified
             if not st.session_state.get('verified', False):
-                return df_f  # Return original if not verified
+                return df_f
 
         if added_lines:
-            st.warning(f'Houve(ram) {len(lines_removed)} linha(s) adicionada(s) do arquivo original.')
+            st.info(f'Foram adicionadas {len(added_lines)} linha(s) ao original.')
 
         return edited_df
 
-    # Display and edit data
     edited_df = main_editor(df)
-
     edited_df = processar_datas(edited_df)
 
     # Save functionality
@@ -348,7 +326,7 @@ if st.session_state.get('authentication_status'):
     save_option = st.radio("Salvar em:", ("S3", "Local"))
 
     if save_option == "S3":
-        if st.button("Salvar como S3"):
+        if st.button("Salvar em S3"):
             try:
                 # Create backup first
                 backup_key = f"backups/Controle_de_Processos_{datetime.now().strftime('%Y%m%d')}.parquet"
@@ -360,25 +338,22 @@ if st.session_state.get('authentication_status'):
 
                 # Save edited version
                 write_to_s3(edited_df, bucket, key)
-                st.success(f'Salvo como S3: s3://{bucket}/{key}')
+                # Clear cache so next load fetches updated file
+                read_from_s3.clear()
+
+                st.success(f'Salvo em S3: s3://{bucket}/{key}')
                 st.info(f'Backup criado em s3://{bucket}/{backup_key}')
-            except s3.exceptions.ClientError as e:
-                error_code = e.response['Error']['Code']
-                if error_code == '404':
-                    st.error("Arquivo original não encontrado no S3")
-                else:
-                    st.error(f"Erro AWS: {str(e)}")
             except Exception as e:
-                st.error(f"Erro inesperado: {str(e)}")
+                st.error(f"Erro salvando em S3: {str(e)}")
     else:
         save_path = st.text_input("Local save path:", value="Controle_de_Processos_editado.parquet")
         if st.button("Salvar localmente"):
             try:
                 edited_df.to_parquet(save_path, index=False)
-                st.success(f"Salvar localmente como {save_path}")
+                st.success(f"Salvo localmente como {save_path}")
             except Exception as e:
                 st.error(f"Erro salvando localmente: {str(e)}")
-    # Footer
+
     st.markdown("---")
     st.markdown("""
     **Application Notes:**
@@ -391,6 +366,8 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
+
 
 
 
