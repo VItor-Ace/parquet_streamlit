@@ -265,14 +265,18 @@ if st.session_state.get('authentication_status'):
 
         if lines_removed:
             st.warning(f'Houve(ram) {len(lines_removed)} linha(s) removida(s) do arquivo original. Confirme a ação:')
-            random_code = generating_random_code()
-            code = st.text_input(f"Enter code '{random_code}' to confirm deletion", key="confirm_code")
+            if 'random_code' not in st.session_state:
+                st.session_state.random_code = generating_random_code()
+
+            code = st.text_input(f"Digite o código '{st.session_state.random_code}' para confirmar", key="confirm_code")
             if st.button("Confirmar Remoção"):
-                if code == random_code:
-                    st.success(f"{len(lines_removed)} linha(s) deletada(s).")
+                if user_code == st.session_state.random_code:
+                    st.success(f"{len(lines_removed)} linha(s) removida(s).")
+                    st.session_state.random_code = None
                 else:
-                    st.error("Código incorreto. Linhas não apagadas.")
+                    st.error("Código incorreto. Ação cancelada.")
                     edited_df = df.copy()  # Revert changes
+                    st.session_state.random_code = None  # Clear on failure too
 
         if added_lines:
             st.warning(f'Houve(ram) {len(lines_removed)} linha(s) adicionada(s) do arquivo original.')
@@ -329,6 +333,7 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
 
 
 
