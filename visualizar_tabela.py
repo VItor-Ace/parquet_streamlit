@@ -114,34 +114,6 @@ with auth_container:
             except Exception as e:
                 st.error(e)
 
-with st.sidebar:
-    if st.session_state.get('authentication_status'):
-        # Password reset button
-        if st.button("Redefinir minha senha"):
-            try:
-                if authenticator.reset_password(st.session_state['username'], location='sidebar'):
-                    with open('credentials.yaml', 'w', encoding='utf-8') as file:
-                        yaml.dump(authenticator.credentials, file, allow_unicode=True)
-                    st.success('Senha modificada com sucesso!')
-            except Exception as e:
-                st.error(f"Erro ao redefinir senha: {e}")
-
-        # User details update button
-        if st.button("Atualizar meus dados de usuário"):
-            try:
-                if authenticator.update_user_details(st.session_state['username'], location='sidebar'):
-                    with open('credentials.yaml', 'w', encoding='utf-8') as file:
-                        yaml.dump(authenticator.credentials, file, default_flow_style=False, allow_unicode=True)
-                    st.success('Dados atualizados com sucesso!')
-            except Exception as e:
-                st.error(f"Erro ao atualizar dados: {e}")
-
-if st.session_state.get('authentication_status'):
-    # Limpa as abas de autenticação
-    auth_container.empty()
-
-    authenticator.logout('Sair', 'sidebar')
-
 # ------------------------------------- DEFINING FUNCTIONS TO BE USED AFTER ------------------------------------------ #
     @st.cache_data
     def read_from_s3(bucket_f, key_f):
@@ -162,6 +134,86 @@ if st.session_state.get('authentication_status'):
         characters = string.ascii_letters + string.digits
         code = ''.join(random.choice(characters) for _ in range(length))
         return code
+
+
+    def update_credentials_file():
+        """Must be called after ANY credential change"""
+        with open('credentials.yaml', 'w', encoding='utf-8') as file_:
+            yaml.dump(
+                authenticator.credentials,
+                file_,
+                default_flow_style=False,  # Critical for proper YAML format
+                allow_unicode=True,  # Preserves special characters
+                sort_keys=False  # Maintains original order
+            )
+
+# ----------------------------------------- CREATING WEBAPP AFTER LOGGING -------------------------------------------- #
+
+with st.sidebar:
+    if st.session_state.get('authentication_status'):
+        # Password reset button
+
+        if st.button("Redefinir minha senha"):
+            try:
+                if authenticator.reset_password(st.session_state['username'], location='sidebar'):
+                    with open('credentials.yaml', 'w', encoding='utf-8') as file:
+                        yaml.dump(authenticator.credentials, file, allow_unicode=True)
+                    st.success('Senha modificada com sucesso!')
+            except Exception as e:
+                st.error(f"Erro ao redefinir senha: {e}")
+
+        # User details update button
+        if st.button("Atualizar meus dados de usuário"):
+            try:
+                if authenticator.update_user_details(st.session_state['username'], location='sidebar'):
+                    with open('credentials.yaml', 'w', encoding='utf-8') as file:
+                        yaml.dump(authenticator.credentials, file, default_flow_style=False, allow_unicode=True)
+                    st.success('Dados atualizados com sucesso!')
+            except Exception as e:
+                st.error(f"Erro ao atualizar dados: {e}")
+
+with st.sidebar:
+    if st.session_state.get('authentication_status'):
+        # Password reset button
+        if st.button("Redefinir minha senha"):
+            try:
+                username = st.session_state['username']
+
+                if authenticator.reset_password(st.session_state['username'], location='sidebar', fields={'Form name':'Redefinir sua Senha', 'Current password':'Senha atual', 'New password':'Nova senha', 'Repeat password': 'Repita a senha', 'Reset':'Redefinir'}):
+                    new_password = authenticator.credentials['usernames'][username]['password']
+                    if len(new_password) < 8:
+                        raise ValueError("Senha deve ter 8+ caracteres")
+
+                    update_credentials_file()
+
+                    if is_running_on_cloud():
+                        st.warning("""
+                            Senha alterada com sucesso! \n
+                            **Para usuários do Streamlit Community Cloud:** \n
+                            Notifique o administrador para atualizar os secrets no painel.
+                            """)
+                    else:
+                        st.success("Senha alterada com sucesso!")
+
+            except Exception as e:
+                st.error(f"Falha na atualização: {str(e)}")
+                authenticator.credentials = yaml.safe_load(open('credentials.yaml'))
+
+        # User details update button
+        if st.button("Atualizar meus dados de usuário"):
+            try:
+                if authenticator.update_user_details(st.session_state['username'], location='sidebar', fields={'Form name':'Atualizar detalhes de Usuário', 'Field':'Campo', 'First name':'Nome', 'Last name':'Sobrenome', 'Email':'Email', 'New value':'Novo valor', 'Update':'Atualizar'}):
+                    update_credentials_file()
+                    st.success('Dados atualizados com sucesso!')
+            except Exception as e:
+                st.error(f"Erro ao atualizar dados: {e}")
+                authenticator.credentials = yaml.safe_load(open('credentials.yaml'))
+
+if st.session_state.get('authentication_status'):
+    # Limpa as abas de autenticação
+    auth_container.empty()
+
+    authenticator.logout('Sair', 'sidebar')
 
     # ---------------------------------- WRITING THE WEB APP INTERFACE AND COMMANDS -------------------------------------- #
 
@@ -319,8 +371,14 @@ if st.session_state.get('authentication_status'):
                 write_to_s3(edited_df, bucket, key)
                 st.success(f'Salvo como S3: s3://{bucket}/{key}')
                 st.info(f'Backup criado em s3://{bucket}/{backup_key}')
+            except s3.exceptions.ClientError as e:
+                error_code = e.response['Error']['Code']
+                if error_code == '404':
+                    st.error("Arquivo original não encontrado no S3")
+                else:
+                    st.error(f"Erro AWS: {str(e)}")
             except Exception as e:
-                st.error(f"Erro em salvar como S3: {str(e)}")
+                st.error(f"Erro inesperado: {str(e)}")
     else:
         save_path = st.text_input("Local save path:", value="Controle_de_Processos_editado.parquet")
         if st.button("Salvar localmente"):
@@ -343,7 +401,6 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
-
 
 
 
