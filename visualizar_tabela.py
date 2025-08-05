@@ -257,29 +257,23 @@ if st.session_state.get('authentication_status'):
 
     data_file_values = df.values.tolist()
 
-    for i, lista in enumerate(data_file_values):
-        for j, item in enumerate(lista):
-            # print(f"{i=}, {j=}, {item=}, type={type(item)}")
-
-            if pd.isna(item) or item == 'nan':
-                data_file_values[i][j] = '--'
-            elif isinstance(item, datetime):
-                data_file_values[i][j] = item.strftime("%d/%m/%Y")  # MODIFICAÇÃO: formatar datetime direto
-            elif isinstance(item, str):
-                for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y"):
-                    try:
-                        parsed_date = datetime.strptime(item, fmt).date()
-                        data_file_values[i][j] = parsed_date.strftime("%d/%m/%Y")
-                        break
-                    except ValueError:
-                        continue
-
-    colunas = df.columns
-    DataFrame_corrigido = pd.DataFrame(data_file_values, columns=colunas)
-
-    DataFrame_corrigido.to_parquet('Controle_de_Processos.parquet', index=False)
-
-    df = DataFrame_corrigido
+    def processar_datas(df):
+        data = df.values.tolist()
+        for i, row in enumerate(data):
+            for j, val in enumerate(row):
+                if pd.isna(val) or val == 'nan':
+                    data[i][j] = '--'
+                elif isinstance(val, datetime):
+                    data[i][j] = val.strftime("%d/%m/%Y")
+                elif isinstance(val, str):
+                    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y"):
+                        try:
+                            parsed_date = datetime.strptime(val, fmt).date()
+                            data[i][j] = parsed_date.strftime("%d/%m/%Y")
+                            break
+                        except ValueError:
+                            continue
+        return pd.DataFrame(data, columns=df.columns)
 
     # Main editor function
     def main_editor(df_f: pd.DataFrame) -> pd.DataFrame:
@@ -347,6 +341,8 @@ if st.session_state.get('authentication_status'):
     # Display and edit data
     edited_df = main_editor(df)
 
+    edited_df = processar_datas(edited_df)
+
     # Save functionality
     st.subheader("Salvar Alterações")
     save_option = st.radio("Salvar em:", ("S3", "Local"))
@@ -382,7 +378,6 @@ if st.session_state.get('authentication_status'):
                 st.success(f"Salvar localmente como {save_path}")
             except Exception as e:
                 st.error(f"Erro salvando localmente: {str(e)}")
-
     # Footer
     st.markdown("---")
     st.markdown("""
@@ -396,6 +391,7 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
 
 
 
