@@ -114,27 +114,31 @@ with auth_container:
             except Exception as e:
                 st.error(e)
 
+with st.sidebar:
+    if st.session_state.get('authentication_status'):
+        # Password reset button
+        if st.button("Redefinir minha senha"):
+            try:
+                if authenticator.reset_password(st.session_state['username'], location='sidebar'):
+                    with open('credentials.yaml', 'w', encoding='utf-8') as file:
+                        yaml.dump(authenticator.credentials, file, allow_unicode=True)
+                    st.success('Senha modificada com sucesso!')
+            except Exception as e:
+                st.error(f"Erro ao redefinir senha: {e}")
+
+        # User details update button
+        if st.button("Atualizar meus dados de usuário"):
+            try:
+                if authenticator.update_user_details(st.session_state['username'], location='sidebar'):
+                    with open('credentials.yaml', 'w', encoding='utf-8') as file:
+                        yaml.dump(authenticator.credentials, file, default_flow_style=False, allow_unicode=True)
+                    st.success('Dados atualizados com sucesso!')
+            except Exception as e:
+                st.error(f"Erro ao atualizar dados: {e}")
+
 if st.session_state.get('authentication_status'):
     # Limpa as abas de autenticação
     auth_container.empty()
-
-    if st.button("Redefinir minha senha"):
-        try:
-            if authenticator.reset_password(st.session_state.get('username'), 'sidebar'):
-                st.success('Senha modificada com sucesso!')
-                with open('credentials.yaml', 'w', encoding='utf-8') as file:
-                    yaml.dump(authenticator.credentials, file, allow_unicode=True)
-        except Exception as e:
-            st.error(e)
-
-    if st.button("Atualizar meus dados de usuário"):
-        try:
-            if authenticator.update_user_details(st.session_state.get('username'), location='sidebar'):
-                st.success('Atualizado com sucesso!')
-                with open('credentials.yaml', 'w', encoding='utf-8') as file:
-                    yaml.dump(authenticator.credentials, file, default_flow_style=False, allow_unicode=True)
-        except Exception as e:
-            st.error(e)
 
     authenticator.logout('Sair', 'sidebar')
 
@@ -328,5 +332,6 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
 
 
