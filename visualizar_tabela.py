@@ -3,10 +3,10 @@ import random
 import streamlit_authenticator as stauth
 import streamlit as st
 import pandas as pd
+from io import BytesIO
 import os
 from datetime import datetime
 import boto3
-from io import BytesIO
 import yaml
 from yaml.loader import SafeLoader
 
@@ -48,7 +48,7 @@ authenticator = stauth.Authenticate(
     config['cookie']['name'],
     config['cookie']['key'],
     config['cookie']['expiry_days'],
-    config['preauthorized']['emails']
+    config['preauthorized']["emails"]
 )
 
 st.title("Editor e Visualizador de Tabela")
@@ -65,7 +65,8 @@ with auth_container:
                     "main",
                     1,
                     4,
-                    {'Form name':'Login', 'Username':'Nome de usuário', 'Password':'Senha', 'Login':'Login', 'Captcha':'Captcha'},
+                    {'Form name': 'Login', 'Username': 'Nome de usuário', 'Password': 'Senha', 'Login': 'Login',
+                     'Captcha': 'Captcha'},
                     True
                 )
 
@@ -77,10 +78,11 @@ with auth_container:
 
             try:
                 email_of_registered_user, \
-                username_of_registered_user, \
-                name_of_registered_user = authenticator.register_user(
-                    fields={'Form name':'Registro', 'Email':'Email', 'Username':'Nome de usuário', 'Password':'Senha', 'Repeat password':'Repita a senha', 'Password hint':'Dica para a senha', 'Captcha':'Captcha', 'Register':'Registrar'}
-                )
+                    username_of_registered_user, \
+                    name_of_registered_user = authenticator.register_user(
+                    fields={'Form name': 'Registro', 'Email': 'Email', 'Username': 'Nome de usuário',
+                            'Password': 'Senha', 'Repeat password': 'Repita a senha',
+                            'Password hint': 'Dica para a senha', 'Captcha': 'Captcha', 'Register': 'Registrar'})
                 if email_of_registered_user:
                     st.success('Usuário registrado com sucesso!')
                     with open('credentials.yaml', 'w', encoding='utf-8') as file:
@@ -93,16 +95,18 @@ with auth_container:
             st.subheader("Recuperar senha")
             try:
                 username_of_forgotten_password, \
-                email_of_forgotten_password, \
-                new_random_password = authenticator.forgot_password(
-                    fields={'Form name':'Esqueci minha senha', 'Username':'Nome de usuário', 'Captcha':'Captcha', 'Submit':'Feito!'}
-                )
+                    email_of_forgotten_password, \
+                    new_random_password = authenticator.forgot_password(
+                    fields={'Form name': 'Esqueci minha senha', 'Username': 'Nome de usuário', 'Captcha': 'Captcha',
+                            'Submit': 'Feito!'})
                 if username_of_forgotten_password:
                     st.success('Nova senha enviada com segurança!')
+                    # To securely transfer the new password to the user please see step 8.
+                    # Salvar as alterações no arquivo
                     with open('credentials.yaml', 'w', encoding='utf-8') as file:
                         yaml.dump(authenticator.credentials, file, default_flow_style=False, allow_unicode=True)
                 else:
-                    st.error('Usuário não encontrado.')
+                    st.error('Usúario não encontrado.')
 
             except Exception as e:
                 st.error(e)
@@ -111,8 +115,8 @@ with auth_container:
             st.subheader("Recuperar nome de usuário")
             try:
                 username_recovered = authenticator.forgot_username(
-                    fields={'Form name':'Esqueci meu usuário', 'Email':'Email', 'Captcha':'Captcha', 'Submit':'Feito!'}
-                )
+                    fields={'Form name': 'Esqueci meu usuário', 'Email': 'Email', 'Captcha': 'Captcha',
+                            'Submit': 'Feito!'})
                 if username_recovered:
                     st.success(f"Nome de usuário enviado para o email associado!")
             except Exception as e:
@@ -155,12 +159,11 @@ with auth_container:
 
 with st.sidebar:
     if st.session_state.get('authentication_status'):
-
         # --- Reset Password ---
         if st.sidebar.button("Redefinir minha senha", key="unique_reset_pwd_btn"):
+            username = st.session_state.get('username')
             try:
-                username = st.session_state['username']
-                result = authenticator.reset_password(
+                res = authenticator.reset_password(
                     username,
                     location='sidebar',
                     fields={
@@ -172,26 +175,30 @@ with st.sidebar:
                     }
                 )
 
-                if result:
-                    new_pwd = authenticator.credentials['usernames'][username]['password']
-                    if len(new_pwd) < 8:
+                # res pode ser True / False / None
+                if res is True:
+                    new_password = authenticator.credentials['usernames'][username]['password']
+
+                    if len(new_password) < 8:
                         st.sidebar.error("Falha: nova senha deve ter ao menos 8 caracteres.")
                     else:
+                        # Se estiver no Streamlit Cloud, não tente gravar localmente.
                         if st.secrets.get('streamlit_cloud', False):
                             st.sidebar.warning(
-                                "Para Streamlit Cloud: contate o administrador\n"
-                                "para atualizar a senha em Settings → Secrets"
+                                "Para Streamlit Cloud: contate o administrador para atualizar a senha em Settings → Secrets"
                             )
                         else:
-                            update_credentials_file()
-                            st.sidebar.success("Senha alterada com sucesso!")
-                elif not result:
-                    st.sidebar.error(
-                        "Não foi possível redefinir a senha.\n"
-                        "Verifique a senha atual e tente novamente."
-                    )
-                else:  # None (usuário cancelou)
-                    st.sidebar.info("Redefinição de senha cancelada.")
+                            # grava local - só faça isso quando rodando localmente
+                            try:
+                                update_credentials_file()
+                                st.sidebar.success("Senha alterada e arquivo de credenciais atualizado localmente.")
+                            except Exception as e:
+                                st.sidebar.error(f"Senha alterada, mas falha ao gravar arquivo: {e}")
+
+                elif res is False:
+                    st.sidebar.error("Falha ao redefinir a senha. Verifique a senha atual e tente novamente.")
+                else:  # None (usuário cancelou/fechou o form)
+                    st.sidebar.info("Redefinição de senha cancelada pelo usuário.")
 
             except Exception as e:
                 st.sidebar.error(f"Falha inesperada ao redefinir senha: {e}")
@@ -199,7 +206,7 @@ with st.sidebar:
         # --- Update User Details ---
         if st.sidebar.button("Atualizar meus dados", key="unique_update_details_btn"):
             try:
-                result = authenticator.update_user_details(
+                res2 = authenticator.update_user_details(
                     st.session_state['username'],
                     location='sidebar',
                     fields={
@@ -213,26 +220,30 @@ with st.sidebar:
                     }
                 )
 
-                if result:
+                if res2 is True:
                     if st.secrets.get('streamlit_cloud', False):
                         st.sidebar.warning(
-                            "Para Streamlit Cloud: contate o administrador\n"
-                            "para atualizar os detalhes em Settings → Secrets"
+                            "Para Streamlit Cloud: contate o administrador para atualizar os detalhes em Settings → Secrets"
                         )
                     else:
-                        update_credentials_file()
-                        st.sidebar.success("Dados atualizados com sucesso!")
+                        try:
+                            update_credentials_file()
+                            st.sidebar.success("Dados do usuário atualizados e arquivo de credenciais gravado.")
+                        except Exception as e:
+                            st.sidebar.error(f"Dados atualizados, mas falha ao gravar arquivo: {e}")
+                elif res2 is False:
+                    st.sidebar.error("Não foi possível atualizar os dados. Verifique os campos e tente novamente.")
                 else:
-                    st.sidebar.error("Não foi possível atualizar os dados. Reveja as informações e tente novamente.")
+                    st.sidebar.info("Atualização cancelada pelo usuário.")
 
             except Exception as e:
                 st.sidebar.error(f"Erro inesperado ao atualizar dados: {e}")
 
-        # --- Logout ---
+        # Logout (permanece)
         authenticator.logout('Sair', 'sidebar')
 
 if st.session_state.get('authentication_status'):
-    # limpa as abas de autenticação
+    # Limpa as abas de autenticação
     auth_container.empty()
 
     # ---------------------------------- WRITING THE WEB APP INTERFACE AND COMMANDS -------------------------------------- #
@@ -266,15 +277,21 @@ if st.session_state.get('authentication_status'):
         st.stop()
 
     df.columns = ["." if str(col).startswith('Unnamed') else col for col in df.columns]
+
+    # 2. Agora renomeia as colunas "." duplicadas com asteriscos PROGRESSIVOS
     novos_nomes = []
     contador_pontos = 0
+
     for nome in df.columns:
         if nome == '.':
-            novos_nomes.append(str(contador_pontos))
+            novos_nomes.append(f'{contador_pontos}')
             contador_pontos += 1
         else:
-            novos_nomes.append(nome)
+            novos_nomes.append(nome)  # Mantém outros nomes intactos
+
     df.columns = novos_nomes
+
+    data_file_values = df.values.tolist()
 
     def processar_datas(df):
         data = df.values.tolist()
@@ -298,6 +315,7 @@ if st.session_state.get('authentication_status'):
     def main_editor(df_f: pd.DataFrame) -> pd.DataFrame:
         st.subheader("Edite a Tabela")
         try:
+            # Try newer data_editor first
             edited_df = st.data_editor(
                 df_f,
                 use_container_width=True,
@@ -305,6 +323,7 @@ if st.session_state.get('authentication_status'):
                 key="data_editor"
             )
         except AttributeError:
+            # Fallback to experimental editor
             edited_df = st.experimental_data_editor(
                 df_f,
                 use_container_width=True,
@@ -312,18 +331,24 @@ if st.session_state.get('authentication_status'):
                 key="data_editor"
             )
 
-        original_keys = {hash(tuple(row)) for row in df_f.values}
-        edited_keys = {hash(tuple(row)) for row in edited_df.values}
+        def hash_row(row):
+            return hash(tuple(row))
+
+        original_keys = set(hash_row(row) for row in df_f.values)
+        edited_keys = set(hash_row(row) for row in edited_df.values)
 
         lines_removed = original_keys - edited_keys
         added_lines = edited_keys - original_keys
 
         if lines_removed:
             st.warning(f'Houve(ram) {len(lines_removed)} linha(s) removida(s). Confirme a ação:')
+
+            # Initialize session state if not exists
             if 'verification_code' not in st.session_state:
                 st.session_state.verification_code = generating_random_code()
                 st.session_state.verified = False
 
+            # Show verification UI
             col1, col2 = st.columns([3, 1])
             with col1:
                 user_input = st.text_input(
@@ -331,6 +356,7 @@ if st.session_state.get('authentication_status'):
                     key="verification_input"
                 )
             with col2:
+                st.write("")  # Spacer
                 if st.button("Confirmar", key="verify_button"):
                     if user_input == str(st.session_state.verification_code):
                         st.session_state.verified = True
@@ -339,15 +365,18 @@ if st.session_state.get('authentication_status'):
                         st.error("Código incorreto!")
                         st.session_state.verified = False
 
+            # Only return edited DF if verified
             if not st.session_state.get('verified', False):
-                return df_f
+                return df_f  # Return original if not verified
 
         if added_lines:
-            st.info(f'Foram adicionadas {len(added_lines)} linha(s) ao original.')
+            st.warning(f'Houve(ram) {len(lines_removed)} linha(s) adicionada(s) do arquivo original.')
 
         return edited_df
 
+    # Display and edit data
     edited_df = main_editor(df)
+
     edited_df = processar_datas(edited_df)
 
     # Save functionality
@@ -357,32 +386,53 @@ if st.session_state.get('authentication_status'):
     if save_option == "S3":
         if st.button("Salvar em S3"):
             try:
-                # Create backup first
-                backup_key = f"backups/Controle_de_Processos_{datetime.now().strftime('%Y%m%d')}.parquet"
+                backup_key = f"backups/Controle_de_Processos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.parquet"
                 s3.copy_object(
                     Bucket=bucket,
                     CopySource={'Bucket': bucket, 'Key': key},
                     Key=backup_key
                 )
-
-                # Save edited version
                 write_to_s3(edited_df, bucket, key)
-                # Clear cache so next load fetches updated file
-                read_from_s3.clear()
-
+                try:
+                    read_from_s3.clear()
+                except Exception:
+                    pass
                 st.success(f'Salvo em S3: s3://{bucket}/{key}')
                 st.info(f'Backup criado em s3://{bucket}/{backup_key}')
             except Exception as e:
-                st.error(f"Erro salvando em S3: {str(e)}")
-    else:
-        save_path = st.text_input("Local save path:", value="Controle_de_Processos_editado.parquet")
-        if st.button("Salvar localmente"):
-            try:
-                edited_df.to_parquet(save_path, index=False)
-                st.success(f"Salvo localmente como {save_path}")
-            except Exception as e:
-                st.error(f"Erro salvando localmente: {str(e)}")
+                st.error(f"Erro salvando em S3: {e}")
 
+    else:
+        # Opção 1: salvar no servidor (apenas se rodando local)
+        save_path = st.text_input("Salvar localmente (apenas se estiver rodando local):",
+                                  value="Controle_de_Processos_editado.parquet")
+        if st.button("Salvar localmente (no servidor)"):
+            try:
+                edited_df.to_parquet(save_path, index=False, engine='pyarrow')
+                st.success(f"Arquivo gravado no servidor: {save_path}")
+                st.info("Se estiver no Streamlit Cloud, lembre-se: o arquivo não persistirá entre reinícios.")
+            except Exception as e:
+                st.error(f"Erro salvando localmente: {e}")
+
+        try:
+            import pyarrow as pa
+            import pyarrow.parquet as pq
+            # create Arrow table
+            table = pa.Table.from_pandas(df=edited_df, preserve_index=False) # type: ignore
+            buf = pa.BufferOutputStream()
+            pq.write_table(table, buf)
+            data_bytes = buf.getvalue().to_pybytes()
+
+            st.download_button(
+                label="Download do arquivo (.parquet)",
+                data=data_bytes,
+                file_name="Controle_de_Processos_editado.parquet",
+                mime="application/octet-stream",
+            )
+        except Exception as e:
+            st.error(f"Erro preparando download: {e}")
+
+    # Footer
     st.markdown("---")
     st.markdown("""
     **Application Notes:**
