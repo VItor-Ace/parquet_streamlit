@@ -57,7 +57,7 @@ auth_container = st.container()
 
 with auth_container:
     if not st.session_state.get('authentication_status'):
-        tabs = st.tabs(["Login", "Registrar", "Esqueci a senha", "Esqueci o usuário"])
+        tabs = st.tabs(["Login"])
 
         with tabs[0]:
             try:
@@ -70,55 +70,6 @@ with auth_container:
                     True
                 )
 
-            except Exception as e:
-                st.error(e)
-
-        with tabs[1]:
-            st.subheader("Novo registro de usuário.")
-
-            try:
-                email_of_registered_user, \
-                    username_of_registered_user, \
-                    name_of_registered_user = authenticator.register_user(
-                    fields={'Form name': 'Registro', 'Email': 'Email', 'Username': 'Nome de usuário',
-                            'Password': 'Senha', 'Repeat password': 'Repita a senha',
-                            'Password hint': 'Dica para a senha', 'Captcha': 'Captcha', 'Register': 'Registrar'})
-                if email_of_registered_user:
-                    st.success('Usuário registrado com sucesso!')
-                    with open('credentials.yaml', 'w', encoding='utf-8') as file:
-                        yaml.dump(authenticator.credentials, file, default_flow_style=False, allow_unicode=True)
-
-            except Exception as e:
-                st.error(f"Erro ao registrar: {e}")
-
-        with tabs[2]:
-            st.subheader("Recuperar senha")
-            try:
-                username_of_forgotten_password, \
-                    email_of_forgotten_password, \
-                    new_random_password = authenticator.forgot_password(
-                    fields={'Form name': 'Esqueci minha senha', 'Username': 'Nome de usuário', 'Captcha': 'Captcha',
-                            'Submit': 'Feito!'})
-                if username_of_forgotten_password:
-                    st.success('Nova senha enviada com segurança!')
-                    # To securely transfer the new password to the user please see step 8.
-                    # Salvar as alterações no arquivo
-                    with open('credentials.yaml', 'w', encoding='utf-8') as file:
-                        yaml.dump(authenticator.credentials, file, default_flow_style=False, allow_unicode=True)
-                else:
-                    st.error('Usúario não encontrado.')
-
-            except Exception as e:
-                st.error(e)
-
-        with tabs[3]:
-            st.subheader("Recuperar nome de usuário")
-            try:
-                username_recovered = authenticator.forgot_username(
-                    fields={'Form name': 'Esqueci meu usuário', 'Email': 'Email', 'Captcha': 'Captcha',
-                            'Submit': 'Feito!'})
-                if username_recovered:
-                    st.success(f"Nome de usuário enviado para o email associado!")
             except Exception as e:
                 st.error(e)
 
@@ -143,35 +94,22 @@ with auth_container:
         code = ''.join(random.choice(characters) for _ in range(length))
         return code
 
-
-    def update_credentials_file():
-        """Must be called after ANY credential change"""
-        with open('credentials.yaml', 'w', encoding='utf-8') as file_:
-            yaml.dump(
-                authenticator.credentials,
-                file_,
-                default_flow_style=False,  # Critical for proper YAML format
-                allow_unicode=True,  # Preserves special characters
-                sort_keys=False  # Maintains original order
-            )
-
 # ----------------------------------------- CREATING WEBAPP AFTER LOGGING -------------------------------------------- #
 
 with st.sidebar:
     if st.session_state.get('authentication_status'):
-        # Logout (permanece)
         authenticator.logout('Sair', 'sidebar')
 
 if st.session_state.get('authentication_status'):
     # Limpa as abas de autenticação
     auth_container.empty()
 
-    # ---------------------------------- WRITING THE WEB APP INTERFACE AND COMMANDS ---------------------------------- #
+    # ---------------------------------- WRITING THE WEB APP INTERFACE AND COMMANDS -------------------------------------- #
 
     col1, col2 = st.columns([1, 4])
 
     with col1:
-        st.image('Logo_Minimal_webapp.png', width=130)
+        st.image('Logo_RC_.png', width=130)
     with col2:
         st.title(f"Bem vindo {st.session_state.get('name')}!")
 
@@ -234,16 +172,6 @@ if st.session_state.get('authentication_status'):
     # Main editor function
     def main_editor(df_f: pd.DataFrame) -> pd.DataFrame:
         st.subheader("Edite a Tabela")
-
-        # Initialize session state keys for tracking the dataframe and its state
-        if 'original_df_hash' not in st.session_state:
-            # Store a hash of the original DF on first load for comparison
-            st.session_state.original_df_hash = hash(pd.util.hash_pandas_object(df_f).sum())
-            st.session_state.last_verified_df = df_f.copy()
-            st.session_state.verification_code = None
-            st.session_state.verified = False
-            st.session_state.pending_deletion = False
-
         try:
             # Try newer data_editor first
             edited_df = st.data_editor(
@@ -261,69 +189,47 @@ if st.session_state.get('authentication_status'):
                 key="data_editor"
             )
 
-        # Calculate the current hash of the edited DF
-        current_hash = hash(pd.util.hash_pandas_object(edited_df).sum())
-        # Get the hash of the last known good/verified state
-        last_verified_hash = hash(pd.util.hash_pandas_object(st.session_state.last_verified_df).sum())
+        def hash_row(row):
+            return hash(tuple(row))
 
-        # Check if the user has made changes SINCE the last verification/load
-        has_changes = current_hash != last_verified_hash
+        original_keys = set(hash_row(row) for row in df_f.values)
+        edited_keys = set(hash_row(row) for row in edited_df.values)
 
-        # Only check for deletions if there are actual changes
-        if has_changes:
-            # Compare against the last verified state, not the original load
-            original_keys = set(hash(tuple(row)) for row in st.session_state.last_verified_df.values)
-            edited_keys = set(hash(tuple(row)) for row in edited_df.values)
-            lines_removed = original_keys - edited_keys
+        lines_removed = original_keys - edited_keys
+        added_lines = edited_keys - original_keys
 
-            # If lines were removed, set the state to pending deletion and generate a code
-            if lines_removed and not st.session_state.verified:
-                st.session_state.pending_deletion = True
-                if st.session_state.verification_code is None:
-                    st.session_state.verification_code = generating_random_code()
-                st.warning(f'Houve(ram) {len(lines_removed)} linha(s) removida(s). Confirme a ação:')
+        if lines_removed:
+            st.warning(f'Houve(ram) {len(lines_removed)} linha(s) removida(s). Confirme a ação:')
 
-                # Show verification UI
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    user_input = st.text_input(
-                        f"Digite '{st.session_state.verification_code}' para confirmar",
-                        key="verification_input"
-                    )
-                with col2:
-                    st.write("")  # Spacer
-                    if st.button("Confirmar", key="verify_button"):
-                        if user_input == str(st.session_state.verification_code):
-                            st.session_state.verified = True
-                            st.session_state.pending_deletion = False
-                            # Update the last verified state to the current edited state
-                            st.session_state.last_verified_df = edited_df.copy()
-                            st.success("Remoção confirmada!")
-                            st.rerun()  # Rerun to clear the verification UI
-                        else:
-                            st.error("Código incorreto!")
-                            st.session_state.verified = False
-
-                # If a deletion is pending and not verified, return the last verified (good) state
-                # This prevents the app from showing the deleted rows until they are confirmed
-                if st.session_state.pending_deletion:
-                    return st.session_state.last_verified_df
-
-            # If changes were made but no lines were removed, or if the deletion was verified,
-            # update the last verified state
-            else:
-                st.session_state.last_verified_df = edited_df.copy()
-                st.session_state.verification_code = None
+            # Initialize session state if not exists
+            if 'verification_code' not in st.session_state:
+                st.session_state.verification_code = generating_random_code()
                 st.session_state.verified = False
-                st.session_state.pending_deletion = False
 
-        # If there are no changes, ensure the verification state is reset
-        else:
-            st.session_state.verification_code = None
-            st.session_state.verified = False
-            st.session_state.pending_deletion = False
+            # Show verification UI
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                user_input = st.text_input(
+                    f"Digite '{st.session_state.verification_code}' para confirmar",
+                    key="verification_input"
+                )
+            with col2:
+                st.write("")  # Spacer
+                if st.button("Confirmar", key="verify_button"):
+                    if user_input == str(st.session_state.verification_code):
+                        st.session_state.verified = True
+                        st.success("Remoção confirmada!")
+                    else:
+                        st.error("Código incorreto!")
+                        st.session_state.verified = False
 
-        # Return the edited dataframe (which might be the same as last_verified_df if a deletion is pending)
+            # Only return edited DF if verified
+            if not st.session_state.get('verified', False):
+                return df_f  # Return original if not verified
+
+        if added_lines:
+            st.warning(f'Houve(ram) {len(added_lines)} linha(s) adicionada(s) do arquivo original.')
+
         return edited_df
 
     # Display and edit data
@@ -397,3 +303,4 @@ elif st.session_state.get('authentication_status') is False:
     st.warning("Usuário/senha inválidos.")
 elif st.session_state.get('authentication_status') is None:
     st.warning("Por favor, insira usuário e senha.")
+
